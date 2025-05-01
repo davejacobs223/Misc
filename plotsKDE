@@ -1,0 +1,39 @@
+getvars=psi.posterior.to_dataframe().columns
+getvars=getvars[getvars.str.endswith('stim')]
+
+psi_df=psi.posterior.to_dataframe().reset_index()
+ctr_df=sal.posterior.to_dataframe().reset_index()
+#this does all the calcs outlined above, returns the nromalized parameter estimates
+num_plots = len(getvars)
+# Create a figure with subplots (adjust rows and columns based on the number of plots)
+rows = (num_plots // 3) + (1 if num_plots % 3 != 0 else 0)  # Automatically adjust rows based on number of plots
+cols = 3  # For 3 columns of subplots (you can change this number based on your preference)
+
+fig, axes = plt.subplots(rows, cols, figsize=(15, 5*rows))
+
+axes = axes.flatten()
+
+for i, a in enumerate(getvars):
+    tr=psi_df[a]
+    ctr=ctr_df[a]
+    diff=tr-ctr
+    df=pd.DataFrame(tr)
+    df['treat']='psi'
+    dfS=pd.DataFrame(ctr)
+    dfS['treat']='saline'
+    
+    dfplot=pd.concat([df,dfS])
+    
+    #make plot
+    ax = axes[i]
+    hdi95=az.hdi(diff.to_numpy(),.95)
+    hdi85=az.hdi(diff.to_numpy(),.75)
+    #ctrhdi95=az.hdi(ctr.to_numpy(),.95)
+    sns.kdeplot(data=dfplot,x=a,hue='treat',fill=True,clip=(-20,20),palette=['blue','grey'],linewidth=0,ax=ax)
+    ax.plot(hdi95, [0.02, 0.02], color='black', lw=6)
+    ax.plot(hdi85, [0.03, 0.03], color='red', lw=6) 
+    ax.text(np.mean(hdi95), 0.04, '95% HDI of diffs', ha='center', va='bottom', color='black', fontsize=12)
+    ax.axvline(x=0,color='black')
+    #ax.axvspan(-0.1, 0.1, color='gray', alpha=0.5) 
+    ax.set_title(a)
+plt.tight_layout()
